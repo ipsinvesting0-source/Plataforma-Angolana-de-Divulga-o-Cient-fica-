@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search as SearchIcon, Calendar, Filter, FileText, User } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { Publication, Profile } from '../types';
+import { Publication } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useToast } from '../components/ui/Toast';
 
@@ -33,28 +33,27 @@ export const Search: React.FC = () => {
   const fetchPublications = async () => {
     setLoading(true);
     try {
-      // Simplificado para não fazer JOIN com profiles (evita erro "table not found")
+      // Usando os nomes corretos das colunas conforme SQL criado
       let query = supabase
         .from('publicacoes')
         .select('*')
         .eq('approved', true) 
-        .order('data_publicacao', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (filters.keyword) {
-        query = query.ilike('titulo', `%${filters.keyword}%`);
+        query = query.ilike('title', `%${filters.keyword}%`);
       }
       
       if (filters.area) {
-        query = query.eq('area_cientifica', filters.area);
+        query = query.eq('scientific_area', filters.area);
       }
 
       const { data, error } = await query;
 
       if (error) throw error;
-      setPublications(data as unknown as Publication[]);
+      setPublications(data as Publication[]);
     } catch (error) {
       console.error('Erro ao buscar pesquisas:', error);
-      // Não mostrar toast de erro se for apenas tabela vazia ou inexistente no início
     } finally {
       setLoading(false);
     }
@@ -188,11 +187,10 @@ export const Search: React.FC = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">
-                          {/* Nome do autor removido temporariamente pois tabela profiles não existe */}
                           Pesquisador PADC
                         </p>
                         <p className="text-xs text-gray-500 truncate">
-                          {new Date(pub.publish_date).toLocaleDateString('pt-AO')}
+                          {new Date(pub.created_at).toLocaleDateString('pt-AO')}
                         </p>
                       </div>
                     </div>

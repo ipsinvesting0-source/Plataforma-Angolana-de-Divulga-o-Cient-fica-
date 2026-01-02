@@ -18,7 +18,6 @@ export interface Publication {
   keywords: string[];
   scientific_area: string;
   file_url: string;
-  publish_date: string;
   created_at: string;
   approved: boolean;
   profiles?: Profile; // Joined data

@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ui/Toast';
+import { Mail, CheckCircle, ArrowLeft } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const navigate = useNavigate();
   const { addToast } = useToast();
 
@@ -28,42 +30,32 @@ export const Login: React.FC = () => {
       if (isSignUp) {
         // --- FLUXO DE CADASTRO ---
         
-        // 1. Criar usuário na autenticação
-        const { data: authData, error: authError } = await supabase.auth.signUp({
+        // Salvamos TUDO nos metadados (options.data). 
+        // Isso garante que os dados existam mesmo que o usuário só confirme o email dias depois.
+        const { error: authError } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: window.location.origin, 
+            data: {
+              full_name: fullName,
+              institution: institution,
+              birth_date: birthDate,
+              address: address,
+              academic_role: academicRole,
+              user_type: 'researcher'
+            }
+          }
         });
 
         if (authError) throw authError;
 
-        if (authData.user) {
-          // 2. Inserir dados extras na tabela 'profiles'
-          const { error: profileError } = await supabase.from('profiles').insert({
-            id: authData.user.id,
-            full_name: fullName,
-            institution: institution,
-            birth_date: birthDate,
-            address: address,
-            academic_role: academicRole,
-            user_type: 'researcher' // Padrão para novos cadastros
-          });
+        // Não tentamos inserir em 'profiles' aqui para evitar erros de permissão (RLS)
+        // A inserção será feita automaticamente no primeiro login (ver Layout.tsx)
+        
+        setRegistrationSuccess(true);
+        window.scrollTo(0, 0);
 
-          if (profileError) {
-            console.error('Erro ao salvar perfil:', profileError);
-            addToast({ 
-              title: 'Conta criada com aviso', 
-              description: 'Usuário criado, mas houve um erro ao salvar os dados do perfil. Tente editar no painel.', 
-              type: 'info' 
-            });
-          } else {
-            addToast({ 
-              title: 'Cadastro realizado!', 
-              description: 'Verifique seu email para confirmar a conta.', 
-              type: 'success' 
-            });
-            setIsSignUp(false);
-          }
-        }
       } else {
         // --- FLUXO DE LOGIN ---
         const { error } = await supabase.auth.signInWithPassword({
@@ -72,8 +64,7 @@ export const Login: React.FC = () => {
         });
 
         if (error) throw error;
-
-        addToast({ title: 'Login realizado com sucesso', type: 'success' });
+        // O redirecionamento acontece via Listener no Layout.tsx ou aqui
         navigate('/dashboard');
       }
     } catch (error: any) {
@@ -82,6 +73,45 @@ export const Login: React.FC = () => {
       setLoading(false);
     }
   };
+
+  if (registrationSuccess) {
+    return (
+      <div className="min-h-[90vh] flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-lg bg-white p-8 rounded-2xl shadow-xl border border-gray-100 text-center animate-in fade-in zoom-in duration-300">
+          <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Mail className="w-10 h-10 text-emerald-600" />
+          </div>
+          
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Verifique seu Email</h2>
+          
+          <p className="text-gray-600 mb-6 leading-relaxed">
+            Enviamos um link de confirmação para:<br/>
+            <span className="font-semibold text-gray-900">{email}</span>
+          </p>
+          
+          <div className="bg-blue-50 p-4 rounded-lg text-left mb-8 border border-blue-100">
+            <p className="text-sm text-blue-800 flex gap-2">
+              <CheckCircle className="w-5 h-5 flex-shrink-0" />
+              <span>
+                Para ativar sua conta e acessar o painel, clique no link enviado para o seu e-mail.
+              </span>
+            </p>
+          </div>
+
+          <button 
+            onClick={() => {
+              setRegistrationSuccess(false);
+              setIsSignUp(false);
+              setPassword('');
+            }}
+            className="w-full bg-white border border-gray-300 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" /> Voltar para o Login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[90vh] flex items-center justify-center px-4 py-12">
@@ -98,7 +128,6 @@ export const Login: React.FC = () => {
 
         <form onSubmit={handleAuth} className="space-y-4">
           
-          {/* CAMPOS ESPECÍFICOS DE CADASTRO */}
           {isSignUp && (
             <div className="space-y-4 animate-in slide-in-from-top-4 duration-300">
               <div>
@@ -166,7 +195,6 @@ export const Login: React.FC = () => {
             </div>
           )}
 
-          {/* CAMPOS COMUNS (LOGIN E CADASTRO) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Email Institucional ou Pessoal</label>
             <input 

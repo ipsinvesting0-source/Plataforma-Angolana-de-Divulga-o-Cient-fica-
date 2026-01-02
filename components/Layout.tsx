@@ -12,16 +12,25 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const { addToast } = useToast();
 
   useEffect(() => {
+    // Verificar sessão inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Escutar mudanças de autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null);
+      
+      // Redirecionamento inteligente após login
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (location.pathname === '/' || location.pathname === '/login') {
+            navigate('/dashboard');
+        }
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [navigate, location.pathname]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

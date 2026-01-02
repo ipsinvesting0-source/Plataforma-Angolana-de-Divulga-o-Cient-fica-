@@ -43,29 +43,28 @@ export const Dashboard: React.FC = () => {
       navigate('/login');
       return;
     }
-
+    
     try {
-      // Load Profile
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .single();
+      // Carregar dados dos Metadados do Usuário (Sempre funciona, não depende de tabelas extras)
+      const meta = session.user.user_metadata || {};
       
-      if (profile) {
-        setProfileData(profile);
-      } else {
-        // Se não existir perfil (ex: login antigo), inicializa com ID
-        setProfileData({ id: session.user.id });
-      }
+      setProfileData({
+          full_name: meta.full_name || '',
+          institution: meta.institution || '',
+          birth_date: meta.birth_date || '',
+          address: meta.address || '',
+          academic_role: meta.academic_role || 'estudante'
+      });
 
-      // Load Publications
-      const { data: pubs } = await supabase
+      // Carregar Publicações (Tenta carregar, se a tabela publicacoes existir)
+      const { data: pubs, error: pubsError } = await supabase
         .from('publicacoes')
         .select('*')
         .eq('user_id', session.user.id);
       
-      setPublications(pubs as Publication[] || []);
+      if (!pubsError) {
+        setPublications(pubs as Publication[] || []);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -76,22 +75,25 @@ export const Dashboard: React.FC = () => {
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingProfile(true);
+
     try {
-        const { error } = await supabase
-            .from('profiles')
-            .upsert({
-                id: profileData.id, // Garante que o ID está presente para o Upsert
+        // Salvar nos Metadados do Usuário via Auth API
+        // Isso resolve o erro "table public-profiles not found"
+        const { error } = await supabase.auth.updateUser({
+            data: {
                 full_name: profileData.full_name,
                 institution: profileData.institution,
                 birth_date: profileData.birth_date,
                 address: profileData.address,
                 academic_role: profileData.academic_role,
-                updated_at: new Date().toISOString(),
-            });
+            }
+        });
 
         if (error) throw error;
+        
         addToast({ title: 'Perfil atualizado com sucesso!', type: 'success' });
     } catch (error: any) {
+        console.error('Error saving profile:', error);
         addToast({ title: 'Erro ao atualizar', description: error.message, type: 'error' });
     } finally {
         setSavingProfile(false);

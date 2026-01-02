@@ -2,6 +2,9 @@ export interface Profile {
   id: string; // references auth.users.id
   full_name: string | null;
   institution: string | null;
+  birth_date?: string | null;
+  address?: string | null;
+  academic_role?: 'estudante' | 'professor' | 'investigador' | null;
   research_areas: string[] | null;
   user_type: 'researcher' | 'editor' | 'admin';
   avatar_url?: string;

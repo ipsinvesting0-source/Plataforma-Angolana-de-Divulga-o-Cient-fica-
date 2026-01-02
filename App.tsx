@@ -19,7 +19,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/sobre" element={<About />} />
             <Route path="/login" element={<Login />} />
-            {/* Fallback routes */}
+            {/* Fallback route */}
             <Route path="*" element={<Home />} />
           </Routes>
         </Layout>

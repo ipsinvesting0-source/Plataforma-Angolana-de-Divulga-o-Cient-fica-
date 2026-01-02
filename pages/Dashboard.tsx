@@ -8,11 +8,16 @@ import {
   Eye, 
   Trash2,
   CheckCircle2,
-  Clock
+  Clock,
+  Save,
+  MapPin,
+  Calendar,
+  Building2,
+  GraduationCap
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../components/ui/Toast';
-import { Publication } from '../types';
+import { Publication, Profile } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useNavigate } from 'react-router-dom';
 
@@ -20,7 +25,11 @@ export const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'publications' | 'profile'>('overview');
   const [publications, setPublications] = useState<Publication[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [savingProfile, setSavingProfile] = useState(false);
+  
+  // Profile State
+  const [profileData, setProfileData] = useState<Partial<Profile>>({});
+  
   const { addToast } = useToast();
   const navigate = useNavigate();
 
@@ -37,13 +46,18 @@ export const Dashboard: React.FC = () => {
 
     try {
       // Load Profile
-      const { data: profile } = await supabase
+      const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', session.user.id)
         .single();
       
-      setUserProfile(profile);
+      if (profile) {
+        setProfileData(profile);
+      } else {
+        // Se não existir perfil (ex: login antigo), inicializa com ID
+        setProfileData({ id: session.user.id });
+      }
 
       // Load Publications
       const { data: pubs } = await supabase
@@ -59,6 +73,31 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingProfile(true);
+    try {
+        const { error } = await supabase
+            .from('profiles')
+            .upsert({
+                id: profileData.id, // Garante que o ID está presente para o Upsert
+                full_name: profileData.full_name,
+                institution: profileData.institution,
+                birth_date: profileData.birth_date,
+                address: profileData.address,
+                academic_role: profileData.academic_role,
+                updated_at: new Date().toISOString(),
+            });
+
+        if (error) throw error;
+        addToast({ title: 'Perfil atualizado com sucesso!', type: 'success' });
+    } catch (error: any) {
+        addToast({ title: 'Erro ao atualizar', description: error.message, type: 'error' });
+    } finally {
+        setSavingProfile(false);
+    }
+  };
+
   const stats = {
     views: publications.reduce((acc, curr) => acc + (curr.views || 0), 0),
     downloads: publications.reduce((acc, curr) => acc + (curr.downloads || 0), 0),
@@ -67,7 +106,7 @@ export const Dashboard: React.FC = () => {
   };
 
   const renderOverview = () => (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <h2 className="text-2xl font-bold text-gray-900">Visão Geral</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
@@ -115,19 +154,11 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Simplified "Recent Activity" or Chart Placeholder */}
-      <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm min-h-[300px] flex items-center justify-center">
-        <div className="text-center text-gray-400">
-          <p>Gráficos de desempenho serão exibidos aqui</p>
-          <span className="text-xs">(Integração futura com Recharts)</span>
-        </div>
-      </div>
     </div>
   );
 
   const renderPublications = () => (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-900">Minhas Publicações</h2>
         <button className="bg-emerald-500 text-white px-4 py-2 rounded-lg hover:bg-emerald-600 flex items-center gap-2 text-sm font-medium">
@@ -226,12 +257,12 @@ export const Dashboard: React.FC = () => {
         <div className="p-6 mt-auto border-t border-zinc-800">
            {loading ? <Skeleton className="h-10 w-full bg-zinc-800" /> : (
              <div className="flex items-center gap-3">
-               <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center font-bold">
-                 {userProfile?.full_name?.charAt(0) || 'U'}
+               <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center font-bold text-white uppercase">
+                 {profileData?.full_name?.charAt(0) || 'U'}
                </div>
                <div className="overflow-hidden">
-                 <p className="text-sm font-medium text-white truncate">{userProfile?.full_name || 'Usuário'}</p>
-                 <p className="text-xs text-gray-500 truncate">{userProfile?.institution || 'Pesquisador'}</p>
+                 <p className="text-sm font-medium text-white truncate">{profileData?.full_name || 'Usuário'}</p>
+                 <p className="text-xs text-gray-500 truncate">{profileData?.institution || 'Pesquisador'}</p>
                </div>
              </div>
            )}
@@ -252,19 +283,94 @@ export const Dashboard: React.FC = () => {
             {activeTab === 'overview' && renderOverview()}
             {activeTab === 'publications' && renderPublications()}
             {activeTab === 'profile' && (
-              <div className="bg-white p-8 rounded-xl border border-gray-100 shadow-sm max-w-2xl">
-                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Editar Perfil</h2>
-                 <form className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Nome Completo</label>
-                      <input type="text" defaultValue={userProfile?.full_name} className="mt-1 w-full p-2 border rounded-md" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Instituição</label>
-                      <input type="text" defaultValue={userProfile?.institution} className="mt-1 w-full p-2 border rounded-md" />
-                    </div>
-                    <button type="button" className="bg-emerald-500 text-white px-4 py-2 rounded-md hover:bg-emerald-600">Salvar Alterações</button>
-                 </form>
+              <div className="max-w-3xl animate-in fade-in duration-500">
+                 <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">Configurações do Perfil</h2>
+                    <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full uppercase font-bold text-xs">
+                        {profileData.academic_role || 'USUÁRIO'}
+                    </span>
+                 </div>
+                 
+                 <div className="bg-white p-8 rounded-xl border border-gray-100 shadow-sm">
+                     <form onSubmit={handleUpdateProfile} className="space-y-6">
+                        <div className="grid md:grid-cols-2 gap-6">
+                            <div className="col-span-2">
+                                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                                    <User className="w-4 h-4 text-emerald-500" /> Nome Completo
+                                </label>
+                                <input 
+                                    type="text" 
+                                    value={profileData.full_name || ''} 
+                                    onChange={(e) => setProfileData({...profileData, full_name: e.target.value})}
+                                    className="w-full p-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" 
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                                    <Calendar className="w-4 h-4 text-emerald-500" /> Data de Nascimento
+                                </label>
+                                <input 
+                                    type="date" 
+                                    value={profileData.birth_date || ''} 
+                                    onChange={(e) => setProfileData({...profileData, birth_date: e.target.value})}
+                                    className="w-full p-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" 
+                                />
+                            </div>
+
+                             <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                                    <GraduationCap className="w-4 h-4 text-emerald-500" /> Função
+                                </label>
+                                <select 
+                                    value={profileData.academic_role || 'estudante'} 
+                                    onChange={(e) => setProfileData({...profileData, academic_role: e.target.value as any})}
+                                    className="w-full p-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white" 
+                                >
+                                    <option value="estudante">Estudante</option>
+                                    <option value="professor">Professor</option>
+                                    <option value="investigador">Investigador</option>
+                                </select>
+                            </div>
+
+                            <div className="col-span-2">
+                                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                                    <Building2 className="w-4 h-4 text-emerald-500" /> Instituição
+                                </label>
+                                <input 
+                                    type="text" 
+                                    value={profileData.institution || ''} 
+                                    onChange={(e) => setProfileData({...profileData, institution: e.target.value})}
+                                    className="w-full p-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" 
+                                />
+                            </div>
+
+                            <div className="col-span-2">
+                                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                                    <MapPin className="w-4 h-4 text-emerald-500" /> Endereço / Localização
+                                </label>
+                                <input 
+                                    type="text" 
+                                    value={profileData.address || ''} 
+                                    onChange={(e) => setProfileData({...profileData, address: e.target.value})}
+                                    className="w-full p-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" 
+                                    placeholder="Cidade, Província"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end pt-4 border-t border-gray-100">
+                            <button 
+                                type="submit" 
+                                disabled={savingProfile}
+                                className="bg-emerald-500 text-white px-6 py-2.5 rounded-lg hover:bg-emerald-600 flex items-center gap-2 font-medium disabled:opacity-50"
+                            >
+                                <Save className="w-4 h-4" />
+                                {savingProfile ? 'Salvando...' : 'Salvar Alterações'}
+                            </button>
+                        </div>
+                     </form>
+                 </div>
               </div>
             )}
           </>

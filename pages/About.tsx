@@ -27,19 +27,19 @@ export const About: React.FC = () => {
           <div className="bg-gray-50 p-8 rounded-2xl border-t-4 border-emerald-500 hover:shadow-lg transition-shadow">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Missão</h3>
             <p className="text-gray-600 leading-relaxed">
-              [Missão a definir] Promover a visibilidade da ciência angolana através de uma infraestrutura digital robusta e acessível.
+              Promover a visibilidade da ciência angolana através de uma infraestrutura digital robusta e acessível.
             </p>
           </div>
           <div className="bg-gray-50 p-8 rounded-2xl border-t-4 border-emerald-500 hover:shadow-lg transition-shadow">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Visão</h3>
             <p className="text-gray-600 leading-relaxed">
-              [Visão a definir] Ser a referência principal para a busca e publicação de conteúdo acadêmico em Angola até 2030.
+              Ser a referência principal para a busca e publicação de conteúdo acadêmico em Angola até 2030.
             </p>
           </div>
           <div className="bg-gray-50 p-8 rounded-2xl border-t-4 border-emerald-500 hover:shadow-lg transition-shadow">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Valores</h3>
             <ul className="text-gray-600 list-disc list-inside space-y-2">
-              <li>[Valores a definir] Ética Científica</li>
+              <li>Ética Científica</li>
               <li>Acesso Aberto</li>
               <li>Colaboração</li>
               <li>Inovação</li>

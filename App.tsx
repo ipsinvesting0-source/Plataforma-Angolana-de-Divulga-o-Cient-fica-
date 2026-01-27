@@ -8,6 +8,9 @@ import { Dashboard } from './pages/Dashboard';
 import { About } from './pages/About';
 import { Login } from './pages/Login';
 import { PublicationDetails } from './pages/PublicationDetails';
+import { Terms } from './pages/Terms';
+import { Privacy } from './pages/Privacy';
+import { Contact } from './pages/Contact';
 
 function App() {
   return (
@@ -21,6 +24,9 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/sobre" element={<About />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/termos" element={<Terms />} />
+            <Route path="/privacidade" element={<Privacy />} />
+            <Route path="/contacto" element={<Contact />} />
             {/* Fallback route */}
             <Route path="*" element={<Home />} />
           </Routes>

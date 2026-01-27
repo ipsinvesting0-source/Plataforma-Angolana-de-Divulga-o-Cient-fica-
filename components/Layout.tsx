@@ -169,15 +169,15 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <ul className="space-y-2 text-sm text-gray-500">
                 <li><Link to="/pesquisas" className="hover:text-emerald-600">Pesquisas</Link></li>
                 <li><Link to="/sobre" className="hover:text-emerald-600">Sobre Nós</Link></li>
-                <li><Link to="/login" className="hover:text-emerald-600">Área do Pesquisador</Link></li>
+                <li><Link to="/contacto" className="hover:text-emerald-600">Contacto</Link></li>
               </ul>
             </div>
             <div>
               <h3 className="font-semibold text-gray-900 mb-4">Legal</h3>
               <ul className="space-y-2 text-sm text-gray-500">
-                <li><a href="#" className="hover:text-emerald-600">Termos de Uso</a></li>
-                <li><a href="#" className="hover:text-emerald-600">Privacidade</a></li>
-                <li><a href="#" className="hover:text-emerald-600">Contato</a></li>
+                <li><Link to="/termos" className="hover:text-emerald-600">Termos de Uso</Link></li>
+                <li><Link to="/privacidade" className="hover:text-emerald-600">Privacidade</Link></li>
+                <li><Link to="/contacto" className="hover:text-emerald-600">Apoio Técnico</Link></li>
               </ul>
             </div>
           </div>

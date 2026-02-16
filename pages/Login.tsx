@@ -23,7 +23,6 @@ export const Login: React.FC<LoginProps> = ({ isAdminRoute = false }) => {
   const [birthDate, setBirthDate] = useState('');
   const [academicRole, setAcademicRole] = useState('estudante');
 
-  // Preenchimento automático para o admin solicitado
   useEffect(() => {
     if (isAdminRoute) {
       setEmail('isaac.admin@padc.site');
@@ -60,7 +59,6 @@ export const Login: React.FC<LoginProps> = ({ isAdminRoute = false }) => {
         });
         if (error) throw error;
 
-        // Se logar com o email de admin, garante que o tipo no metadata seja admin
         if (email === 'isaac.admin@padc.site') {
            await supabase.auth.updateUser({
              data: { user_type: 'admin', full_name: 'Isaac Pimpão (Admin)' }
@@ -107,18 +105,18 @@ export const Login: React.FC<LoginProps> = ({ isAdminRoute = false }) => {
              {isAdminRoute ? 'Gestão PADC' : isSignUp ? 'Criar Conta' : 'Entrar na Plataforma'}
            </h1>
            <p className="text-gray-500 mt-2 font-medium">
-             {isAdminRoute ? 'Área Restrita: Moderação e Controle' : isSignUp ? 'Inicie sua jornada na ciência angolana.' : 'Acesse seu painel de pesquisador.'}
+             {isAdminRoute ? 'Área Restrita Admin' : isSignUp ? 'Inicie sua jornada científica.' : 'Acesse seu painel.'}
            </p>
         </div>
 
         <form onSubmit={handleAuth} className="space-y-5">
           {isSignUp && !isAdminRoute && (
             <div className="space-y-4 animate-in slide-in-from-top-4 duration-300">
-              <input type="text" required placeholder="Nome Completo" value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full p-4 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none" />
-              <input type="text" required placeholder="Instituição Acadêmica" value={institution} onChange={(e) => setInstitution(e.target.value)} className="w-full p-4 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none" />
+              <input type="text" required placeholder="Nome Completo" value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full p-4 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none text-gray-900 bg-white" />
+              <input type="text" required placeholder="Instituição Acadêmica" value={institution} onChange={(e) => setInstitution(e.target.value)} className="w-full p-4 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none text-gray-900 bg-white" />
               <div className="grid grid-cols-2 gap-4">
-                <input type="date" required value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className="w-full p-4 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none" />
-                <select value={academicRole} onChange={(e) => setAcademicRole(e.target.value)} className="w-full p-4 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-white font-medium">
+                <input type="date" required value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className="w-full p-4 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none text-gray-900 bg-white" />
+                <select value={academicRole} onChange={(e) => setAcademicRole(e.target.value)} className="w-full p-4 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none bg-white font-medium text-gray-900">
                   <option value="estudante">Estudante</option>
                   <option value="professor">Professor</option>
                   <option value="investigador">Investigador</option>
@@ -128,27 +126,29 @@ export const Login: React.FC<LoginProps> = ({ isAdminRoute = false }) => {
           )}
 
           <div className="relative">
-            <Mail className="absolute left-4 top-4.5 w-5 h-5 text-gray-400" />
+            <Mail className="absolute left-4 top-[18px] w-5 h-5 text-gray-400" />
             <input 
               type="email" 
               required
               readOnly={isAdminRoute}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-4 pl-12 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
+              className="w-full p-4 pl-12 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-gray-900 bg-white"
               placeholder="E-mail"
+              style={{ color: '#111827', backgroundColor: '#ffffff' }}
             />
           </div>
 
           <div className="relative">
-            <Lock className="absolute left-4 top-4.5 w-5 h-5 text-gray-400" />
+            <Lock className="absolute left-4 top-[18px] w-5 h-5 text-gray-400" />
             <input 
               type="password" 
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-4 pl-12 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
+              className="w-full p-4 pl-12 rounded-2xl border border-gray-200 focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-gray-900 bg-white"
               placeholder="Palavra-passe"
+              style={{ color: '#111827', backgroundColor: '#ffffff' }}
             />
           </div>
 
@@ -157,16 +157,16 @@ export const Login: React.FC<LoginProps> = ({ isAdminRoute = false }) => {
             disabled={loading}
             className={`w-full py-4 rounded-2xl font-black text-white transition-all shadow-xl active:scale-95 disabled:opacity-50 mt-6 ${isAdminRoute ? 'bg-red-600 hover:bg-red-700 shadow-red-200' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'}`}
           >
-            {loading ? 'Processando...' : (isAdminRoute ? 'Aceder ao Painel Admin' : isSignUp ? 'Concluir Cadastro' : 'Entrar no Sistema')}
+            {loading ? 'A processar...' : (isAdminRoute ? 'Aceder Painel Admin' : isSignUp ? 'Criar Conta' : 'Entrar')}
           </button>
         </form>
 
         {!isAdminRoute && (
           <div className="mt-10 text-center">
             <p className="text-gray-500 font-medium">
-              {isSignUp ? 'Já possui conta?' : 'Ainda não é cadastrado?'}
-              <button onClick={() => setIsSignUp(!isSignUp)} className="ml-2 text-emerald-600 font-black hover:underline underline-offset-4">
-                {isSignUp ? 'Fazer Login' : 'Criar Conta Agora'}
+              {isSignUp ? 'Já tem conta?' : 'Não tem conta?'}
+              <button onClick={() => setIsSignUp(!isSignUp)} className="ml-2 text-emerald-600 font-black hover:underline">
+                {isSignUp ? 'Fazer Login' : 'Registar Agora'}
               </button>
             </p>
           </div>

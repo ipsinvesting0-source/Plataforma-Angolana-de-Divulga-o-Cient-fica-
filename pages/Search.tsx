@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search as SearchIcon, Calendar, Filter, FileText, User } from 'lucide-react';
+import { Search as SearchIcon, Filter, FileText, User } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Publication } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -12,7 +12,6 @@ export const Search: React.FC = () => {
   const [filters, setFilters] = useState({
     keyword: '',
     area: '',
-    author: ''
   });
   const { addToast } = useToast();
 
@@ -33,14 +32,14 @@ export const Search: React.FC = () => {
   const fetchPublications = async () => {
     setLoading(true);
     try {
-      // JOIN com a tabela de perfis através da coluna user_id
-      // Nota: Supabase usa o nome da FK ou a estrutura de relacionamento definida no banco
+      // Usamos a sintaxe mais robusta para join
       let query = supabase
         .from('publicacoes')
         .select(`
           *,
-          profiles:user_id (
-            full_name
+          profiles (
+            full_name,
+            institution
           )
         `)
         .eq('approved', true) 
@@ -56,11 +55,26 @@ export const Search: React.FC = () => {
 
       const { data, error } = await query;
 
-      if (error) throw error;
-      setPublications(data as Publication[]);
-    } catch (error) {
+      if (error) {
+         console.warn("Erro no Join, tentando carga simples:", error);
+         const { data: simpleData, error: simpleError } = await supabase
+           .from('publicacoes')
+           .select('*')
+           .eq('approved', true)
+           .order('created_at', { ascending: false });
+         
+         if (simpleError) throw simpleError;
+         setPublications(simpleData as Publication[]);
+      } else {
+        setPublications(data as Publication[]);
+      }
+    } catch (error: any) {
       console.error('Erro ao buscar pesquisas:', error);
-      addToast({ title: 'Erro de conexão', description: 'Não foi possível carregar as publicações.', type: 'error' });
+      addToast({ 
+        title: 'Erro de Acervo', 
+        description: 'Não foi possível carregar os detalhes dos autores. Tente novamente mais tarde.', 
+        type: 'error' 
+      });
     } finally {
       setLoading(false);
     }
@@ -76,40 +90,38 @@ export const Search: React.FC = () => {
   };
 
   return (
-    <div className="max-w-screen-xl mx-auto px-4 py-8">
-      <div className="flex flex-col lg:flex-row gap-8">
-        
-        {/* Sidebar Filters */}
-        <aside className="w-full lg:w-64 flex-shrink-0">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 sticky top-24">
-            <div className="flex items-center gap-2 mb-6 text-gray-900">
-              <Filter className="w-5 h-5 text-emerald-500" />
-              <h2 className="font-semibold text-lg">Filtros</h2>
+    <div className="max-w-screen-xl mx-auto px-4 py-12">
+      <div className="flex flex-col lg:flex-row gap-12">
+        <aside className="w-full lg:w-72 flex-shrink-0">
+          <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 sticky top-24">
+            <div className="flex items-center gap-3 mb-8 text-gray-900">
+              <Filter className="w-6 h-6 text-emerald-500" />
+              <h2 className="font-black text-xl uppercase tracking-tighter">Filtros</h2>
             </div>
             
-            <form onSubmit={handleSearchSubmit} className="space-y-4">
+            <form onSubmit={handleSearchSubmit} className="space-y-6">
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Palavra-chave</label>
+                <label className="text-[10px] font-black text-gray-400 uppercase mb-3 block tracking-widest">Termo de Busca</label>
                 <div className="relative">
                   <input
                     type="text"
                     name="keyword"
                     value={filters.keyword}
                     onChange={handleFilterChange}
-                    placeholder="Título ou termo..."
-                    className="w-full p-2 pl-9 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                    placeholder="Título da obra..."
+                    className="w-full p-4 pl-12 rounded-2xl border border-gray-100 text-sm focus:ring-4 focus:ring-emerald-500/10 outline-none font-bold"
                   />
-                  <SearchIcon className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                  <SearchIcon className="w-5 h-5 text-gray-300 absolute left-4 top-4" />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Área Científica</label>
+                <label className="text-[10px] font-black text-gray-400 uppercase mb-3 block tracking-widest">Área Científica</label>
                 <select
                   name="area"
                   value={filters.area}
                   onChange={handleFilterChange}
-                  className="w-full p-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white"
+                  className="w-full p-4 rounded-2xl border border-gray-100 text-sm focus:ring-4 focus:ring-emerald-500/10 outline-none bg-white font-black"
                 >
                   <option value="">Todas as áreas</option>
                   {areas.map(area => (
@@ -120,83 +132,80 @@ export const Search: React.FC = () => {
 
               <button
                 type="submit"
-                className="w-full bg-emerald-500 text-white py-2 rounded-lg font-medium hover:bg-emerald-600 transition-colors mt-2"
+                className="w-full bg-zinc-900 text-white py-5 rounded-2xl font-black shadow-xl hover:bg-black transition-all active:scale-95 uppercase text-xs tracking-widest"
               >
-                Aplicar Filtros
+                APLICAR FILTROS
               </button>
             </form>
           </div>
         </aside>
 
-        {/* Main Content */}
         <div className="flex-1">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Pesquisas Disponíveis</h1>
-            <span className="text-sm text-gray-500">
-              {loading ? 'Carregando...' : `${publications.length} resultados encontrados`}
+          <div className="flex items-center justify-between mb-12">
+            <h1 className="text-4xl font-black text-gray-900 uppercase tracking-tighter">Acervo PADC</h1>
+            <span className="px-5 py-2 bg-emerald-100 text-emerald-700 text-[10px] font-black rounded-full uppercase tracking-widest">
+              {loading ? 'BUSCANDO...' : `${publications.length} OBRAS ENCONTRADAS`}
             </span>
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm h-64 flex flex-col justify-between">
-                  <Skeleton className="h-6 w-3/4" />
-                  <Skeleton className="h-20 w-full" />
-                  <Skeleton className="h-10 w-full rounded-full" />
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-72 w-full rounded-[3rem]" />
               ))}
             </div>
           ) : publications.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {publications.map((pub) => (
-                <div key={pub.id} className="group bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all duration-200 flex flex-col h-full overflow-hidden">
-                  <div className="p-6 flex-1 flex flex-col">
-                    <div className="mb-4">
-                      <span className="inline-block px-2 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-md mb-2">
+                <div key={pub.id} className="group bg-white rounded-[3rem] border border-gray-100 shadow-sm hover:shadow-2xl hover:border-emerald-200 transition-all duration-500 flex flex-col h-full overflow-hidden">
+                  <div className="p-10 flex-1 flex flex-col">
+                    <div className="mb-8">
+                      <span className="inline-block px-4 py-1.5 bg-emerald-50 text-emerald-700 text-[10px] font-black rounded-xl mb-4 tracking-widest uppercase">
                         {pub.scientific_area}
                       </span>
-                      <h3 className="text-lg font-bold text-gray-900 group-hover:text-emerald-600 transition-colors line-clamp-2">
+                      <h3 className="text-2xl font-black text-gray-900 group-hover:text-emerald-600 transition-colors line-clamp-2 leading-[1.2] uppercase tracking-tight">
                         {pub.title}
                       </h3>
                     </div>
                     
-                    <p className="text-gray-600 text-sm line-clamp-3 mb-4 flex-1">
-                      {pub.abstract}
+                    <p className="text-gray-500 text-sm line-clamp-3 mb-8 flex-1 font-medium leading-relaxed italic">
+                      "{pub.abstract}"
                     </p>
 
-                    <div className="flex items-center gap-2 pt-4 border-t border-gray-50 mt-auto">
-                      <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs">
-                        {pub.profiles?.full_name?.charAt(0) || <User className="w-4 h-4 text-gray-500" />}
+                    <div className="flex items-center gap-4 pt-8 border-t border-gray-50 mt-auto">
+                      <div className="w-12 h-12 rounded-2xl bg-zinc-900 flex items-center justify-center text-white font-black text-lg shadow-lg">
+                        {pub.profiles?.full_name?.charAt(0) || 'A'}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {pub.profiles?.full_name || 'Autor Desconhecido'}
+                        <p className="text-sm font-black text-gray-900 truncate uppercase tracking-tighter">
+                          {pub.profiles?.full_name || 'Autor Cadastrado'}
                         </p>
-                        <p className="text-xs text-gray-500 truncate">
-                          {new Date(pub.created_at).toLocaleDateString('pt-AO')}
+                        <p className="text-[10px] text-emerald-600 font-black uppercase tracking-widest mt-0.5">
+                          {pub.profiles?.institution || 'Instituição Académica'}
                         </p>
                       </div>
                     </div>
                   </div>
-                  <div className="bg-gray-50 p-4 border-t border-gray-100 flex justify-between items-center">
-                    <Link to={`/publicacao/${pub.id}`} className="text-sm font-medium text-emerald-600 hover:text-emerald-700">
-                      Ver Pesquisa
+                  <div className="bg-gray-50 p-8 border-t border-gray-100 flex justify-between items-center group-hover:bg-emerald-50/50 transition-colors">
+                    <Link to={`/publicacao/${pub.id}`} className="text-[10px] font-black text-zinc-900 hover:text-emerald-600 uppercase tracking-widest flex items-center gap-2">
+                      EXPLORAR PESQUISA <ArrowRight className="w-3 h-3" />
                     </Link>
                     {pub.file_url && (
-                        <a href={pub.file_url} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-emerald-600">
-                            <FileText className="w-4 h-4" />
-                        </a>
+                        <div className="p-3 bg-white text-emerald-600 rounded-xl shadow-sm">
+                            <FileText className="w-5 h-5" />
+                        </div>
                     )}
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-dashed border-gray-200">
-              <SearchIcon className="w-10 h-10 text-gray-300 mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Sem resultados</h3>
-              <p className="text-gray-500">Tente buscar por outro termo ou área científica.</p>
+            <div className="flex flex-col items-center justify-center py-40 bg-white rounded-[4rem] border-4 border-dashed border-gray-50">
+              <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-8">
+                <SearchIcon className="w-10 h-10 text-gray-200" />
+              </div>
+              <h3 className="text-3xl font-black text-gray-900 mb-4 tracking-tighter">Sem resultados</h3>
+              <p className="text-gray-400 font-bold uppercase text-xs tracking-widest">Tente buscar por termos mais genéricos.</p>
             </div>
           )}
         </div>
@@ -204,3 +213,4 @@ export const Search: React.FC = () => {
     </div>
   );
 };
+import { ArrowRight } from 'lucide-react';

@@ -28,15 +28,21 @@ export const Search: React.FC = () => {
 
   useEffect(() => {
     fetchPublications();
-  }, []); // Initial load
+  }, []);
 
   const fetchPublications = async () => {
     setLoading(true);
     try {
-      // Usando os nomes corretos das colunas conforme SQL criado
+      // JOIN com a tabela de perfis através da coluna user_id
+      // Nota: Supabase usa o nome da FK ou a estrutura de relacionamento definida no banco
       let query = supabase
         .from('publicacoes')
-        .select('*')
+        .select(`
+          *,
+          profiles:user_id (
+            full_name
+          )
+        `)
         .eq('approved', true) 
         .order('created_at', { ascending: false });
 
@@ -54,6 +60,7 @@ export const Search: React.FC = () => {
       setPublications(data as Publication[]);
     } catch (error) {
       console.error('Erro ao buscar pesquisas:', error);
+      addToast({ title: 'Erro de conexão', description: 'Não foi possível carregar as publicações.', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -111,15 +118,6 @@ export const Search: React.FC = () => {
                 </select>
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Data (Ano)</label>
-                 <input
-                    type="number"
-                    placeholder="Ex: 2024"
-                    className="w-full p-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                  />
-              </div>
-
               <button
                 type="submit"
                 className="w-full bg-emerald-500 text-white py-2 rounded-lg font-medium hover:bg-emerald-600 transition-colors mt-2"
@@ -133,7 +131,7 @@ export const Search: React.FC = () => {
         {/* Main Content */}
         <div className="flex-1">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Pesquisas Recentes</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Pesquisas Disponíveis</h1>
             <span className="text-sm text-gray-500">
               {loading ? 'Carregando...' : `${publications.length} resultados encontrados`}
             </span>
@@ -141,17 +139,11 @@ export const Search: React.FC = () => {
 
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
+              {[1, 2, 3].map((i) => (
                 <div key={i} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm h-64 flex flex-col justify-between">
-                  <div className="space-y-3">
-                    <Skeleton className="h-6 w-3/4" />
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-full" />
-                  </div>
-                  <div className="flex gap-2">
-                    <Skeleton className="h-6 w-16 rounded-full" />
-                    <Skeleton className="h-6 w-16 rounded-full" />
-                  </div>
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-10 w-full rounded-full" />
                 </div>
               ))}
             </div>
@@ -173,21 +165,13 @@ export const Search: React.FC = () => {
                       {pub.abstract}
                     </p>
 
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {pub.keywords?.slice(0, 3).map((kw, idx) => (
-                        <span key={idx} className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                          #{kw}
-                        </span>
-                      ))}
-                    </div>
-
                     <div className="flex items-center gap-2 pt-4 border-t border-gray-50 mt-auto">
-                      <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
-                        <User className="w-4 h-4" />
+                      <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xs">
+                        {pub.profiles?.full_name?.charAt(0) || <User className="w-4 h-4 text-gray-500" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">
-                          Pesquisador PADC
+                          {pub.profiles?.full_name || 'Autor Desconhecido'}
                         </p>
                         <p className="text-xs text-gray-500 truncate">
                           {new Date(pub.created_at).toLocaleDateString('pt-AO')}
@@ -197,10 +181,10 @@ export const Search: React.FC = () => {
                   </div>
                   <div className="bg-gray-50 p-4 border-t border-gray-100 flex justify-between items-center">
                     <Link to={`/publicacao/${pub.id}`} className="text-sm font-medium text-emerald-600 hover:text-emerald-700">
-                      Ver Detalhes
+                      Ver Pesquisa
                     </Link>
                     {pub.file_url && (
-                        <a href={pub.file_url} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-emerald-600" title="Download PDF">
+                        <a href={pub.file_url} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-emerald-600">
                             <FileText className="w-4 h-4" />
                         </a>
                     )}
@@ -210,13 +194,9 @@ export const Search: React.FC = () => {
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-dashed border-gray-200">
-              <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6">
-                <SearchIcon className="w-10 h-10 text-gray-300" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Nenhuma pesquisa encontrada</h3>
-              <p className="text-gray-500 text-center max-w-md">
-                Tente ajustar seus filtros ou cadastre uma nova pesquisa para contribuir com a plataforma.
-              </p>
+              <SearchIcon className="w-10 h-10 text-gray-300 mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Sem resultados</h3>
+              <p className="text-gray-500">Tente buscar por outro termo ou área científica.</p>
             </div>
           )}
         </div>

@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Publication } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
-import { FileText, Calendar, User, Download, Share2, ArrowLeft, Eye } from 'lucide-react';
+// Added ShieldCheck to the imports below
+import { FileText, Calendar, User, Download, Share2, ArrowLeft, Eye, Clock, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { useToast } from '../components/ui/Toast';
 
 export const PublicationDetails: React.FC = () => {
@@ -20,20 +22,18 @@ export const PublicationDetails: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('publicacoes')
-        .select('*')
+        .select(`
+          *,
+          profiles:user_id (
+            full_name,
+            institution
+          )
+        `)
         .eq('id', id)
         .single();
 
       if (error) throw error;
       setPublication(data as Publication);
-      
-      // NOTA: A contagem de views requer uma função RPC no banco de dados.
-      // Comentado para evitar erros no console até que a função 'increment_views' seja criada no SQL.
-      /*
-      if (data) {
-          supabase.rpc('increment_views', { row_id: id }).catch(() => {});
-      }
-      */
     } catch (error) {
       console.error('Error fetching publication:', error);
       addToast({ title: 'Erro', description: 'Publicação não encontrada.', type: 'error' });
@@ -42,130 +42,97 @@ export const PublicationDetails: React.FC = () => {
     }
   };
 
-  const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href);
-    addToast({ title: 'Link copiado!', description: 'URL copiada para a área de transferência.', type: 'success' });
-  };
-
-  if (loading) {
-    return (
-      <div className="max-w-screen-xl mx-auto px-4 py-12">
-        <Skeleton className="h-8 w-1/3 mb-4" />
-        <Skeleton className="h-4 w-1/4 mb-8" />
-        <Skeleton className="h-96 w-full rounded-xl" />
-      </div>
-    );
-  }
-
-  if (!publication) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Publicação não encontrada</h2>
-        <Link to="/pesquisas" className="text-emerald-600 hover:underline">Voltar para pesquisas</Link>
-      </div>
-    );
-  }
+  if (loading) return <div className="p-20"><Skeleton className="h-96 w-full" /></div>;
+  if (!publication) return <div className="p-20 text-center">Pesquisa não encontrada.</div>;
 
   return (
     <div className="bg-gray-50 min-h-screen pb-12">
-      {/* Header Info */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-screen-xl mx-auto px-4 py-8 md:py-12">
-          <Link to="/pesquisas" className="inline-flex items-center text-sm text-gray-500 hover:text-emerald-600 mb-6 transition-colors">
+      {/* Alerta de Status (Apenas visível para o autor ou admin se não estiver aprovado) */}
+      {!publication.approved && (
+        <div className="bg-amber-50 border-b border-amber-200 p-4">
+           <div className="max-w-screen-xl mx-auto flex items-center gap-3 text-amber-800">
+              <Clock className="w-5 h-5" />
+              <p className="font-medium text-sm">
+                Esta publicação está <span className="font-bold">Aguardando Aprovação</span> por um administrador e ainda não está visível para o público geral.
+              </p>
+           </div>
+        </div>
+      )}
+
+      {publication.rejection_reason && (
+        <div className="bg-red-50 border-b border-red-200 p-4">
+           <div className="max-w-screen-xl mx-auto flex items-center gap-3 text-red-800">
+              <AlertTriangle className="w-5 h-5" />
+              <p className="font-medium text-sm">
+                Esta publicação foi <span className="font-bold">devolvida para correções</span>. Verifique seu dashboard para mais detalhes.
+              </p>
+           </div>
+        </div>
+      )}
+
+      <div className="bg-white border-b">
+        <div className="max-w-screen-xl mx-auto px-4 py-12">
+          <Link to="/pesquisas" className="flex items-center text-sm text-gray-500 hover:text-emerald-600 mb-6 transition-colors">
             <ArrowLeft className="w-4 h-4 mr-1" /> Voltar para Pesquisas
           </Link>
           
-          <div className="flex flex-col md:flex-row gap-6 justify-between items-start">
-            <div className="max-w-3xl">
-              <span className="inline-block px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold uppercase tracking-wide rounded-full mb-4">
+          <div className="flex flex-col md:flex-row gap-8 justify-between">
+            <div className="flex-1">
+              <span className="inline-block px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full mb-4">
                 {publication.scientific_area}
               </span>
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 leading-tight">
+              <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 mb-6 leading-tight">
                 {publication.title}
               </h1>
-              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+              <div className="flex flex-wrap items-center gap-6 text-sm text-gray-600">
+                 <div className="flex items-center gap-2">
+                    <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold">
+                       {publication.profiles?.full_name?.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-900">{publication.profiles?.full_name}</p>
+                      <p className="text-xs">{publication.profiles?.institution}</p>
+                    </div>
+                 </div>
                  <div className="flex items-center gap-1">
                     <Calendar className="w-4 h-4" />
-                    <span>{new Date(publication.created_at).toLocaleDateString()}</span>
+                    <span>Postado em {new Date(publication.created_at).toLocaleDateString()}</span>
                  </div>
-                 <div className="flex items-center gap-1">
-                    <User className="w-4 h-4" />
-                    <span>Pesquisador PADC</span>
-                 </div>
-                 {publication.views !== undefined && (
-                    <div className="flex items-center gap-1 text-gray-500">
-                        <Eye className="w-4 h-4" />
-                        <span>{publication.views} visualizações</span>
-                    </div>
-                 )}
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 w-full md:w-auto">
-              <a 
-                href={publication.file_url} 
-                download
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-500 text-white font-bold rounded-lg hover:bg-emerald-600 transition-all shadow-sm hover:shadow-md"
-              >
-                <Download className="w-4 h-4" /> Baixar PDF
+            <div className="flex flex-col gap-3">
+              <a href={publication.file_url} download target="_blank" rel="noreferrer" className="px-8 py-4 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600 shadow-lg text-center flex items-center justify-center gap-2">
+                <Download className="w-5 h-5" /> Baixar PDF
               </a>
-              <button 
-                onClick={handleShare}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <Share2 className="w-4 h-4" /> Compartilhar
-              </button>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-screen-xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Content: Abstract & PDF Preview */}
+      <div className="max-w-screen-xl mx-auto px-4 py-12 grid grid-cols-1 lg:grid-cols-3 gap-12">
         <div className="lg:col-span-2 space-y-8">
-          <section className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-emerald-500" /> Resumo
+          <section className="bg-white p-10 rounded-3xl shadow-sm border border-gray-100">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+              <FileText className="w-6 h-6 text-emerald-500" /> Resumo da Pesquisa
             </h2>
-            <p className="text-gray-600 leading-relaxed whitespace-pre-line text-lg">
+            <p className="text-gray-600 leading-relaxed text-lg whitespace-pre-line">
               {publication.abstract}
             </p>
           </section>
 
-          <section className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-             <h2 className="text-xl font-bold text-gray-900 mb-4">Leitura Online</h2>
-             <div className="w-full h-[600px] bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
-               {/* Use standard object tag for PDF embedding */}
-                <object
-                    data={publication.file_url}
-                    type="application/pdf"
-                    width="100%"
-                    height="100%"
-                >
-                    <div className="flex flex-col items-center justify-center h-full text-center p-6">
-                        <p className="text-gray-500 mb-4">Seu navegador não suporta a visualização de PDF.</p>
-                        <a 
-                            href={publication.file_url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-emerald-600 font-semibold hover:underline"
-                        >
-                            Clique aqui para baixar o arquivo.
-                        </a>
-                    </div>
-                </object>
-             </div>
+          <section className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 h-[800px]">
+             <object data={publication.file_url} type="application/pdf" width="100%" height="100%" className="rounded-xl">
+                <p>O seu navegador não suporta visualização direta. <a href={publication.file_url} className="text-emerald-600 font-bold">Clique aqui para baixar.</a></p>
+             </object>
           </section>
         </div>
 
-        {/* Sidebar: Details */}
         <aside className="space-y-6">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h3 className="font-bold text-gray-900 mb-4">Palavras-chave</h3>
+          <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+            <h3 className="font-bold text-gray-900 mb-4">Metadados e Tags</h3>
             <div className="flex flex-wrap gap-2">
-              {publication.keywords && publication.keywords.map((kw, i) => (
+              {publication.keywords?.map((kw, i) => (
                 <span key={i} className="px-3 py-1 bg-gray-100 text-gray-600 text-sm rounded-full">
                   #{kw}
                 </span>
@@ -173,10 +140,12 @@ export const PublicationDetails: React.FC = () => {
             </div>
           </div>
           
-          <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100">
-            <h3 className="font-bold text-emerald-900 mb-2">Sobre o Acesso Aberto</h3>
-            <p className="text-sm text-emerald-800/80 leading-relaxed">
-                Esta obra está disponível gratuitamente para promover a democratização do conhecimento em Angola. Cite a fonte ao utilizar os dados.
+          <div className="bg-emerald-600 p-8 rounded-3xl text-white shadow-xl">
+            <h3 className="font-bold mb-4 flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5" /> Ciência Aberta
+            </h3>
+            <p className="text-sm opacity-90 leading-relaxed">
+              Esta obra é distribuída sob licença de acesso aberto para acelerar a investigação científica em Angola. Sinta-se à vontade para utilizar o conhecimento, citando devidamente os autores.
             </p>
           </div>
         </aside>

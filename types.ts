@@ -20,8 +20,9 @@ export interface Publication {
   file_url: string;
   created_at: string;
   approved: boolean;
-  profiles?: Profile; // Joined data
-  views?: number; // Calculated or joined
+  rejection_reason?: string | null;
+  profiles?: Partial<Profile>; // Joined data (author info)
+  views?: number;
   downloads?: number;
 }
 
